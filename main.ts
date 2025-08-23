@@ -220,12 +220,21 @@ export default class S3AttachmentUploader extends Plugin {
 				const arrayBuffer = await this.app.vault.readBinary(attachment);
 				const buffer = Buffer.from(arrayBuffer);
 				
+				const sanitizedFileName = attachment.name.replace(/\s+/g, '-');
 				let key: string;
 				if (this.settings.organizeByDate) {
 					const datePath = this.formatDate(new Date(), this.settings.dateFormat);
-					key = `${this.settings.folderPath}/${datePath}/${attachment.name}`;
+					if (this.settings.folderPath) {
+						key = `${this.settings.folderPath}/${datePath}/${sanitizedFileName}`;
+					} else {
+						key = `${datePath}/${sanitizedFileName}`;
+					}
 				} else {
-					key = `${this.settings.folderPath}/${attachment.name}`;
+					if (this.settings.folderPath) {
+						key = `${this.settings.folderPath}/${sanitizedFileName}`;
+					} else {
+						key = sanitizedFileName;
+					}
 				}
 				
 				if (attempt > 1) {
@@ -242,7 +251,12 @@ export default class S3AttachmentUploader extends Plugin {
 					ContentType: this.getContentType(attachment.extension)
 				}).promise();
 
-				const cloudUrl = `${this.settings.baseUrl}/${key}`;
+				let cloudUrl: string;
+				if (this.settings.usePathStyle) {
+					cloudUrl = `${this.settings.baseUrl}/${this.settings.bucketName}/${key}`;
+				} else {
+					cloudUrl = `${this.settings.baseUrl}/${key}`;
+				}
 				
 				await this.replaceAttachmentReferences(attachment, cloudUrl, targetFile);
 				
