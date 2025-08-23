@@ -291,14 +291,16 @@ export default class S3AttachmentUploader extends Plugin {
 
 			// Replace markdown links: ![alt](attachment)
 			const markdownRegex = new RegExp(`!\\[([^\\]]*)\\]\\(([^)]*${this.escapeRegex(attachment.name)}[^)]*)\\)`, 'g');
-			if (markdownRegex.test(content)) {
+			if (markdownRegex.test(newContent)) {
+				markdownRegex.lastIndex = 0; // Reset regex state
 				newContent = newContent.replace(markdownRegex, `![$1](${cloudUrl})`);
 				modified = true;
 			}
 
-			// Replace wiki links: [[attachment]]
-			const wikiRegex = new RegExp(`\\[\\[([^\\]]*${this.escapeRegex(attachment.name)}[^\\]]*)\\]\\]`, 'g');
+			// Replace wiki links: [[attachment]] or ![[attachment]]
+			const wikiRegex = new RegExp(`!?\\[\\[([^\\]]*${this.escapeRegex(attachment.name)}[^\\]]*)\\]\\]`, 'g');
 			if (wikiRegex.test(newContent)) {
+				wikiRegex.lastIndex = 0; // Reset regex state
 				newContent = newContent.replace(wikiRegex, `![](${cloudUrl})`);
 				modified = true;
 			}
