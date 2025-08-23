@@ -1,0 +1,91 @@
+{
+	"commands": {
+		"uploadAllAttachments": "上传所有附件到 S3",
+		"uploadCurrentFileAttachments": "上传当前文档附件到 S3"
+	},
+	"ribbon": {
+		"uploadAttachments": "上传当前文档附件"
+	},
+	"notices": {
+		"pleaseConfigureS3": "请先配置 S3 设置",
+		"noAttachmentsFound": "未找到任何附件",
+		"startingUpload": "开始上传 {{count}} 个附件...",
+		"allAttachmentsUploaded": "所有附件上传成功！",
+		"noActiveFile": "没有激活的文档",
+		"noAttachmentsInCurrentFile": "当前文档中未找到附件",
+		"uploadingAttachments": "正在上传 {{count}} 个附件...",
+		"uploadSuccess": "✅ 成功上传 {{count}} 个附件！",
+		"uploadPartialSuccess": "⚠️ 成功上传 {{success}} 个，{{failed}} 个失败",
+		"uploadFailed": "上传失败 {{filename}}: {{error}}",
+		"retryingUpload": "🔄 正在重试上传 {{filename}} (第 {{attempt}} 次尝试)",
+		"uploadFailedAllRetries": "❌ 上传失败 {{filename}} (已尝试 {{maxRetries}} 次): {{error}}",
+		"s3ConnectionSuccess": "✅ S3 连接成功！",
+		"s3ConnectionFailed": "❌ S3 连接失败: {{error}}"
+	},
+	"settings": {
+		"title": "S3 附件上传器设置",
+		"accessKeyId": {
+			"name": "Access Key ID",
+			"desc": "您的 AWS Access Key ID",
+			"placeholder": "输入您的 Access Key ID"
+		},
+		"secretAccessKey": {
+			"name": "Secret Access Key",
+			"desc": "您的 AWS Secret Access Key",
+			"placeholder": "输入您的 Secret Access Key"
+		},
+		"region": {
+			"name": "区域",
+			"desc": "S3 存储桶的 AWS 区域",
+			"placeholder": "us-east-1"
+		},
+		"bucketName": {
+			"name": "存储桶名称",
+			"desc": "您的 S3 存储桶名称",
+			"placeholder": "my-bucket"
+		},
+		"baseUrl": {
+			"name": "基础 URL",
+			"desc": "访问文件的基础 URL（例如：https://mybucket.s3.amazonaws.com）",
+			"placeholder": "https://mybucket.s3.amazonaws.com"
+		},
+		"folderPath": {
+			"name": "文件夹路径",
+			"desc": "S3 存储桶中上传附件的文件夹路径",
+			"placeholder": "obsidian-attachments"
+		},
+		"allowedExtensions": {
+			"name": "允许的文件扩展名",
+			"desc": "可上传的文件扩展名列表，用逗号分隔（例如：png,jpg,pdf）",
+			"placeholder": "png,jpg,jpeg,gif,bmp,svg,webp,pdf,doc,docx,ppt,pptx,xls,xlsx,mp4,mp3,wav,avi,mov"
+		},
+		"organizeByDate": {
+			"name": "按日期组织",
+			"desc": "使用文件夹结构按日期组织上传的文件"
+		},
+		"dateFormat": {
+			"name": "日期格式",
+			"desc": "文件夹结构的日期格式。使用 YYYY（年）、MM（月）、DD（日）、HH（时）、mm（分）、ss（秒）",
+			"placeholder": "YYYY/MM/DD"
+		},
+		"preview": {
+			"name": "预览",
+			"desc": "当前格式将创建：{{path}}"
+		},
+		"usePathStyle": {
+			"name": "使用路径样式 URL",
+			"desc": "启用路径样式 URL (适用于自建 S3 兼容服务，如 MinIO)"
+		},
+		"retryCount": {
+			"name": "重试次数",
+			"desc": "上传失败时的重试次数 (1-10)",
+			"placeholder": "3"
+		},
+		"testConnection": {
+			"name": "测试 S3 连接",
+			"desc": "测试 S3 配置是否正常工作",
+			"button": "测试连接",
+			"testing": "测试中..."
+		}
+	}
+}

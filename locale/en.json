@@ -1,0 +1,91 @@
+{
+	"commands": {
+		"uploadAllAttachments": "Upload all attachments to S3",
+		"uploadCurrentFileAttachments": "Upload current file attachments to S3"
+	},
+	"ribbon": {
+		"uploadAttachments": "Upload current file attachments"
+	},
+	"notices": {
+		"pleaseConfigureS3": "Please configure S3 settings first",
+		"noAttachmentsFound": "No attachments found",
+		"startingUpload": "Starting upload of {{count}} attachments...",
+		"allAttachmentsUploaded": "All attachments uploaded successfully!",
+		"noActiveFile": "No active file",
+		"noAttachmentsInCurrentFile": "No attachments found in current file",
+		"uploadingAttachments": "Uploading {{count}} attachments...",
+		"uploadSuccess": "✅ Successfully uploaded {{count}} attachments!",
+		"uploadPartialSuccess": "⚠️ Successfully uploaded {{success}}, {{failed}} failed",
+		"uploadFailed": "Upload failed {{filename}}: {{error}}",
+		"retryingUpload": "🔄 Retrying upload {{filename}} (attempt {{attempt}})",
+		"uploadFailedAllRetries": "❌ Upload failed {{filename}} (tried {{maxRetries}} times): {{error}}",
+		"s3ConnectionSuccess": "✅ S3 connection successful!",
+		"s3ConnectionFailed": "❌ S3 connection failed: {{error}}"
+	},
+	"settings": {
+		"title": "S3 Attachment Uploader Settings",
+		"accessKeyId": {
+			"name": "Access Key ID",
+			"desc": "Your AWS Access Key ID",
+			"placeholder": "Enter your access key ID"
+		},
+		"secretAccessKey": {
+			"name": "Secret Access Key",
+			"desc": "Your AWS Secret Access Key",
+			"placeholder": "Enter your secret access key"
+		},
+		"region": {
+			"name": "Region",
+			"desc": "AWS region for your S3 bucket",
+			"placeholder": "us-east-1"
+		},
+		"bucketName": {
+			"name": "Bucket Name",
+			"desc": "Name of your S3 bucket",
+			"placeholder": "my-bucket"
+		},
+		"baseUrl": {
+			"name": "Base URL",
+			"desc": "Base URL for accessing files (e.g., https://mybucket.s3.amazonaws.com)",
+			"placeholder": "https://mybucket.s3.amazonaws.com"
+		},
+		"folderPath": {
+			"name": "Folder Path",
+			"desc": "Folder path in S3 bucket for uploaded attachments",
+			"placeholder": "obsidian-attachments"
+		},
+		"allowedExtensions": {
+			"name": "Allowed File Extensions",
+			"desc": "Comma-separated list of file extensions to upload (e.g., png,jpg,pdf)",
+			"placeholder": "png,jpg,jpeg,gif,bmp,svg,webp,pdf,doc,docx,ppt,pptx,xls,xlsx,mp4,mp3,wav,avi,mov"
+		},
+		"organizeByDate": {
+			"name": "Organize by Date",
+			"desc": "Organize uploaded files by date using folder structure"
+		},
+		"dateFormat": {
+			"name": "Date Format",
+			"desc": "Date format for folder structure. Use YYYY (year), MM (month), DD (day), HH (hour), mm (minute), ss (second)",
+			"placeholder": "YYYY/MM/DD"
+		},
+		"preview": {
+			"name": "Preview",
+			"desc": "Current format will create: {{path}}"
+		},
+		"usePathStyle": {
+			"name": "Use Path Style URLs",
+			"desc": "Enable path-style URLs (for self-hosted S3 compatible services like MinIO)"
+		},
+		"retryCount": {
+			"name": "Retry Count",
+			"desc": "Number of retry attempts when upload fails (1-10)",
+			"placeholder": "3"
+		},
+		"testConnection": {
+			"name": "Test S3 Connection",
+			"desc": "Test if the S3 configuration is working correctly",
+			"button": "Test Connection",
+			"testing": "Testing..."
+		}
+	}
+}
