@@ -1,41 +1,41 @@
-# S3 Attachment Uploader
+# S3 附件上传器
 
 [![Obsidian Plugin](https://img.shields.io/badge/Obsidian-Plugin-purple?logo=obsidian)](https://obsidian.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-An Obsidian plugin that automatically uploads local images and attachments to Amazon S3 and replaces local links with cloud links. Perfect for keeping your vault lightweight while ensuring your attachments are always accessible.
+一个 Obsidian 插件，自动将本地图片和附件上传到 Amazon S3，并将本地链接替换为云端链接。完美地保持你的笔记库轻量化，同时确保附件始终可访问。
 
-## Features
+## 功能特性
 
-- 🚀 **Automatic Upload**: Upload local attachments to S3 with a single command
-- 🔄 **Link Replacement**: Automatically replace local attachment links with S3 URLs
-- 📁 **Smart Organization**: Organize uploads by date with customizable folder structure
-- 🧹 **Cleanup Tool**: Remove unused S3 files to manage storage costs
-- 🌍 **Multi-language Support**: Available in English and Chinese
-- ⚡ **Batch Processing**: Upload all attachments or just those in the current file
-- 🎯 **File Type Filtering**: Configurable allowed file extensions
+- 🚀 **自动上传**: 一键将本地附件上传到 S3
+- 🔄 **链接替换**: 自动将本地附件链接替换为 S3 URL
+- 📁 **智能整理**: 按日期组织上传文件，支持自定义文件夹结构
+- 🧹 **清理工具**: 删除未使用的 S3 文件以管理存储成本
+- 🌍 **多语言支持**: 支持中文和英文
+- ⚡ **批量处理**: 上传所有附件或仅当前文档的附件
+- 🎯 **文件类型筛选**: 可配置允许的文件扩展名
 
-## Installation
+## 安装
 
-### Manual Installation
+### 手动安装
 
-1. Download the latest release from the [Releases](https://github.com/yourusername/obsidian-s3-attachment-uploader/releases) page
-2. Extract the plugin files to your vault's plugins directory:
+1. 从 [Releases](https://github.com/arkylin/obsidian-attachment-uploader/releases) 页面下载最新版本
+2. 将插件文件解压到你的笔记库插件目录：
    ```
-   VaultFolder/.obsidian/plugins/s3-attachment-uploader/
+   笔记库文件夹/.obsidian/plugins/obsidian-attachment-uploader/
    ```
-3. Enable the plugin in Obsidian Settings > Community Plugins
+3. 在 Obsidian 设置 > 社区插件中启用插件
 
-### From Obsidian Community Plugins
+### 从 Obsidian 社区插件商店安装
 
-*Coming soon - this plugin is pending review for the community plugin store*
+*即将推出 - 此插件正在等待社区插件商店审核*
 
-## Configuration
+## 配置
 
-### S3 Setup
+### S3 设置
 
-1. Create an AWS S3 bucket
-2. Create an IAM user with the following permissions:
+1. 创建一个 AWS S3 存储桶
+2. 创建一个具有以下权限的 IAM 用户：
    ```json
    {
      "Version": "2012-10-17",
@@ -56,63 +56,63 @@ An Obsidian plugin that automatically uploads local images and attachments to Am
      ]
    }
    ```
-3. Note down the Access Key ID and Secret Access Key
+3. 记录访问密钥 ID 和秘密访问密钥
 
-### Plugin Settings
+### 插件设置
 
-Open Obsidian Settings > S3 Attachment Uploader and configure:
+打开 Obsidian 设置 > S3 附件上传器并配置：
 
-| Setting | Description | Example |
+| 设置 | 描述 | 示例 |
 |---------|-------------|---------|
-| Access Key ID | Your AWS Access Key ID | `AKIAIOSFODNN7EXAMPLE` |
-| Secret Access Key | Your AWS Secret Access Key | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| Region | AWS Region where your bucket is located | `us-east-1` |
-| Bucket Name | Name of your S3 bucket | `my-obsidian-attachments` |
-| Base URL | Custom domain or CloudFront URL (optional) | `https://cdn.example.com` |
-| Folder Path | Prefix for uploaded files | `obsidian-attachments/` |
-| Allowed Extensions | Comma-separated list of allowed file types | `png,jpg,jpeg,gif,pdf,mp4` |
-| Organize by Date | Create date-based folder structure | ✅ Enabled |
-| Date Format | Format for date folders | `YYYY/MM/DD` |
-| Use Path Style | Use path-style URLs for S3-compatible services | ❌ Disabled |
+| 访问密钥 ID | 您的 AWS 访问密钥 ID | `AKIAIOSFODNN7EXAMPLE` |
+| 秘密访问密钥 | 您的 AWS 秘密访问密钥 | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+| 区域 | 您的存储桶所在的 AWS 区域 | `us-east-1` |
+| 存储桶名称 | 您的 S3 存储桶名称 | `my-obsidian-attachments` |
+| 基础 URL | 自定义域名或 CloudFront URL（可选） | `https://cdn.example.com` |
+| 文件夹路径 | 上传文件的前缀路径 | `obsidian-attachments/` |
+| 允许的扩展名 | 逗号分隔的允许文件类型列表 | `png,jpg,jpeg,gif,pdf,mp4` |
+| 按日期组织 | 创建基于日期的文件夹结构 | ✅ 启用 |
+| 日期格式 | 日期文件夹的格式 | `YYYY/MM/DD` |
+| 使用路径样式 | 为 S3 兼容服务使用路径样式 URL | ❌ 禁用 |
 
-## Usage
+## 使用方法
 
-### Commands
+### 命令
 
-The plugin provides three main commands accessible via Command Palette (`Ctrl/Cmd + P`):
+插件提供三个主要命令，可通过命令面板（`Ctrl/Cmd + P`）访问：
 
-1. **Upload all attachments to S3**: Scans your entire vault and uploads all local attachments
-2. **Upload current file attachments to S3**: Uploads only attachments referenced in the currently active file
-3. **Clean up unused S3 files**: Removes S3 files that are no longer referenced in your vault
+1. **上传所有附件到 S3**: 扫描整个笔记库并上传所有本地附件
+2. **上传当前文档附件到 S3**: 仅上传当前激活文档中引用的附件
+3. **清理未使用的 S3 文件**: 删除笔记库中不再引用的 S3 文件
 
-### Ribbon Icon
+### 功能区图标
 
-Click the cloud upload icon in the ribbon to quickly upload attachments from the current file.
+点击功能区中的云上传图标可快速上传当前文档的附件。
 
-### Automatic Processing
+### 自动处理
 
-When you upload attachments, the plugin will:
+当您上传附件时，插件将：
 
-1. **Scan** for local attachment links in your markdown files
-2. **Upload** the files to your S3 bucket
-3. **Replace** local links with S3 URLs
-4. **Organize** files in folders (if date organization is enabled)
+1. **扫描** Markdown 文件中的本地附件链接
+2. **上传** 文件到您的 S3 存储桶
+3. **替换** 本地链接为 S3 URL
+4. **整理** 文件到文件夹（如果启用了日期组织）
 
-### Example
+### 示例
 
-Before:
+上传前：
 ```markdown
-![My Image](attachments/image.png)
+![我的图片](attachments/image.png)
 ```
 
-After:
+上传后：
 ```markdown
-![My Image](https://your-bucket.s3.amazonaws.com/obsidian-attachments/2024/01/15/image.png)
+![我的图片](https://your-bucket.s3.amazonaws.com/obsidian-attachments/2024/01/15/image.png)
 ```
 
-## File Organization
+## 文件组织
 
-With date organization enabled, your S3 bucket will be structured like:
+启用日期组织后，您的 S3 存储桶将按以下结构组织：
 
 ```
 your-bucket/
@@ -130,86 +130,86 @@ your-bucket/
 │       └── ...
 ```
 
-## Development
+## 开发
 
-### Prerequisites
+### 前置要求
 
-- Node.js 16.x or later
-- npm or yarn
+- Node.js 16.x 或更高版本
+- npm 或 yarn
 
-### Setup
+### 设置
 
-1. Clone the repository
+1. 克隆仓库
    ```bash
-   git clone https://github.com/yourusername/obsidian-s3-attachment-uploader.git
-   cd obsidian-s3-attachment-uploader
+   git clone https://github.com/arkylin/obsidian-attachment-uploader.git
+   cd obsidian-attachment-uploader
    ```
 
-2. Install dependencies
+2. 安装依赖
    ```bash
    npm install
    ```
 
-3. Build the plugin
+3. 构建插件
    ```bash
    npm run build
    ```
 
-### Development Workflow
+### 开发工作流
 
-- `npm run dev`: Start development with hot reload
-- `npm run build`: Build for production
-- `npm run version`: Bump version and update manifest
+- `npm run dev`: 启动开发模式（热重载）
+- `npm run build`: 生产构建
+- `npm run version`: 版本升级并更新清单
 
-## Troubleshooting
+## 故障排除
 
-### Common Issues
+### 常见问题
 
-**"Please configure S3 settings first"**
-- Ensure all required S3 settings are filled in the plugin settings
+**"请先配置 S3 设置"**
+- 确保所有必需的 S3 设置都已在插件设置中填写
 
-**Upload fails with permission errors**
-- Verify your IAM user has the required S3 permissions
-- Check that the bucket name and region are correct
+**上传失败并出现权限错误**
+- 验证您的 IAM 用户具有所需的 S3 权限
+- 检查存储桶名称和区域是否正确
 
-**Files not found after upload**
-- Ensure your bucket policy allows public read access (if needed)
-- Check the base URL configuration
+**上传后找不到文件**
+- 确保您的存储桶策略允许公共读取访问（如果需要）
+- 检查基础 URL 配置
 
-**Plugin not loading**
-- Verify the plugin files are in the correct directory
-- Check the Obsidian console for error messages
+**插件无法加载**
+- 验证插件文件在正确的目录中
+- 检查 Obsidian 控制台的错误消息
 
-### Support
+### 技术支持
 
-If you encounter issues:
+如果遇到问题：
 
-1. Check the [Issues](https://github.com/yourusername/obsidian-s3-attachment-uploader/issues) page
-2. Enable debugging in the plugin settings for detailed logs
-3. Create a new issue with your configuration (remove sensitive information)
+1. 查看 [Issues](https://github.com/arkylin/obsidian-attachment-uploader/issues) 页面
+2. 在插件设置中启用调试模式以获取详细日志
+3. 创建一个新的 issue 并提供您的配置信息（请删除敏感信息）
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+欢迎贡献！请随时提交 Pull Request。对于重大更改，请先开启一个 issue 来讨论您想要更改的内容。
 
-### Translation
+### 翻译
 
-To add support for additional languages:
+要添加对其他语言的支持：
 
-1. Create a new locale file in the `locale/` directory (e.g., `locale/fr.json`)
-2. Copy the structure from `locale/en.json`
-3. Translate all strings
-4. Submit a pull request
+1. 在 `locale/` 目录中创建新的语言文件（例如 `locale/fr.json`）
+2. 复制 `locale/en.json` 的结构
+3. 翻译所有字符串
+4. 提交拉取请求
 
-## License
+## 许可证
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+此项目使用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
-## Acknowledgments
+## 致谢
 
-- Built for [Obsidian](https://obsidian.md)
-- Uses [AWS SDK for JavaScript](https://github.com/aws/aws-sdk-js)
-- Inspired by the need for lightweight, cloud-backed note-taking
+- 为 [Obsidian](https://obsidian.md) 构建
+- 使用 [AWS SDK for JavaScript](https://github.com/aws/aws-sdk-js)
+- 受轻量化、云端支持笔记需求的启发
 
 ---
 
