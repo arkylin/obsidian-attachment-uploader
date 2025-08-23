@@ -1,6 +1,6 @@
 {
-  "id": "s3-attachment-uploader",
-  "name": "S3 Attachment Uploader",
+  "id": "obsidian-attachment-uploader",
+  "name": "Attachment Uploader",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
   "description": "Upload local images and attachments to S3 and replace local links with cloud links",
