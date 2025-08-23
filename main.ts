@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, Notice, moment } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, Notice, moment, Modal } from 'obsidian';
 import { S3 } from 'aws-sdk';
 
 interface LocaleStrings {
@@ -49,6 +49,8 @@ interface S3UploaderSettings {
 	dateFormat: string;
 	usePathStyle: boolean;
 	retryCount: number;
+	trashPath: string;
+	moveToTrash: boolean;
 }
 
 const DEFAULT_SETTINGS: S3UploaderSettings = {
@@ -62,7 +64,9 @@ const DEFAULT_SETTINGS: S3UploaderSettings = {
 	organizeByDate: false,
 	dateFormat: 'YYYY/MM/DD',
 	usePathStyle: false,
-	retryCount: 3
+	retryCount: 3,
+	trashPath: '.trash',
+	moveToTrash: true
 }
 
 export default class S3AttachmentUploader extends Plugin {
@@ -85,6 +89,12 @@ export default class S3AttachmentUploader extends Plugin {
 			id: 'upload-current-file-attachments',
 			name: this.i18n.t('commands.uploadCurrentFileAttachments'),
 			callback: () => this.uploadCurrentFileAttachments()
+		});
+
+		this.addCommand({
+			id: 'cleanup-unused-s3-files',
+			name: this.i18n.t('commands.cleanupUnusedS3Files'),
+			callback: () => this.cleanupUnusedS3Files()
 		});
 
 		this.addRibbonIcon('cloud-upload', this.i18n.t('ribbon.uploadAttachments'), () => {
@@ -414,6 +424,151 @@ export default class S3AttachmentUploader extends Plugin {
 			.replace(/ss/g, second);
 	}
 
+	async cleanupUnusedS3Files() {
+		if (!this.s3) {
+			new Notice(this.i18n.t('notices.pleaseConfigureS3'));
+			return;
+		}
+
+		const cleanupModal = new CleanupModal(this.app, this);
+		cleanupModal.open();
+	}
+
+	async getAllS3Files(): Promise<string[]> {
+		if (!this.s3) {
+			throw new Error(this.i18n.t('notices.pleaseConfigureS3'));
+		}
+
+		const files: string[] = [];
+		let continuationToken: string | undefined;
+
+		do {
+			const params: any = {
+				Bucket: this.settings.bucketName,
+				Prefix: this.settings.folderPath
+			};
+
+			if (continuationToken) {
+				params.ContinuationToken = continuationToken;
+			}
+
+			try {
+				const result = await this.s3.listObjectsV2(params).promise();
+				
+				if (result.Contents) {
+					for (const object of result.Contents) {
+						if (object.Key) {
+							// 排除回收站中的文件
+							if (!object.Key.startsWith(this.settings.trashPath + '/') && 
+								!object.Key.includes('/' + this.settings.trashPath + '/')) {
+								files.push(object.Key);
+							}
+						}
+					}
+				}
+
+				continuationToken = result.NextContinuationToken;
+			} catch (error) {
+				console.error('Error listing S3 objects:', error);
+				throw error;
+			}
+		} while (continuationToken);
+
+		return files;
+	}
+
+	async findAllObsidianReferences(): Promise<Set<string>> {
+		const references = new Set<string>();
+		const markdownFiles = this.app.vault.getMarkdownFiles();
+
+		for (const file of markdownFiles) {
+			const content = await this.app.vault.read(file);
+			
+			// 多种模式匹配S3链接
+			const patterns = [
+				// 标准markdown图片链接: ![alt](url)
+				/!\[[^\]]*\]\(([^)]+)\)/g,
+				// markdown链接: [text](url)
+				/\[[^\]]*\]\(([^)]+)\)/g,
+				// wiki链接中的URL: [[url]]
+				/\[\[([^\]]+)\]\]/g,
+				// 直接的URL引用
+				new RegExp('(' + this.escapeRegex(this.settings.baseUrl) + '[^\\s\\)\\]\\>\\<\\"\']+)', 'g')
+			];
+
+			for (const pattern of patterns) {
+				let match;
+				while ((match = pattern.exec(content)) !== null) {
+					let url = match[1];
+					
+					// 如果是完整URL，提取S3 key
+					if (url.includes(this.settings.baseUrl)) {
+						const baseUrlIndex = url.indexOf(this.settings.baseUrl);
+						if (baseUrlIndex !== -1) {
+							let s3Key = url.substring(baseUrlIndex + this.settings.baseUrl.length);
+							if (s3Key.startsWith('/')) {
+								s3Key = s3Key.substring(1);
+							}
+							// 清理URL中的查询参数和片段
+							s3Key = s3Key.split('?')[0].split('#')[0];
+							if (s3Key) {
+								references.add(s3Key);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// 添加调试日志
+		console.log(`Found ${references.size} unique S3 references:`, Array.from(references));
+		return references;
+	}
+
+	async deleteS3File(key: string): Promise<boolean> {
+		if (!this.s3) {
+			return false;
+		}
+
+		try {
+			await this.s3.deleteObject({
+				Bucket: this.settings.bucketName,
+				Key: key
+			}).promise();
+			return true;
+		} catch (error) {
+			console.error(`Error deleting S3 file ${key}:`, error);
+			return false;
+		}
+	}
+
+	async moveS3FileToTrash(key: string): Promise<boolean> {
+		if (!this.s3) {
+			return false;
+		}
+
+		try {
+			const fileName = key.split('/').pop() || key;
+			const trashKey = `${this.settings.trashPath}/${fileName}_${Date.now()}`;
+			
+			await this.s3.copyObject({
+				Bucket: this.settings.bucketName,
+				CopySource: `${this.settings.bucketName}/${key}`,
+				Key: trashKey
+			}).promise();
+
+			await this.s3.deleteObject({
+				Bucket: this.settings.bucketName,
+				Key: key
+			}).promise();
+
+			return true;
+		} catch (error) {
+			console.error(`Error moving S3 file ${key} to trash:`, error);
+			return false;
+		}
+	}
+
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
@@ -595,5 +750,352 @@ class S3UploaderSettingTab extends PluginSettingTab {
 						button.setDisabled(false);
 					}
 				}));
+
+		new Setting(containerEl)
+			.setName(this.plugin.i18n.t('settings.trashPath.name'))
+			.setDesc(this.plugin.i18n.t('settings.trashPath.desc'))
+			.addText(text => text
+				.setPlaceholder(this.plugin.i18n.t('settings.trashPath.placeholder'))
+				.setValue(this.plugin.settings.trashPath)
+				.onChange(async (value) => {
+					this.plugin.settings.trashPath = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName(this.plugin.i18n.t('settings.moveToTrash.name'))
+			.setDesc(this.plugin.i18n.t('settings.moveToTrash.desc'))
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.moveToTrash)
+				.onChange(async (value) => {
+					this.plugin.settings.moveToTrash = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName(this.plugin.i18n.t('settings.cleanupFiles.name'))
+			.setDesc(this.plugin.i18n.t('settings.cleanupFiles.desc'))
+			.addButton(button => button
+				.setButtonText(this.plugin.i18n.t('settings.cleanupFiles.button'))
+				.setWarning()
+				.onClick(async () => {
+					await this.plugin.cleanupUnusedS3Files();
+				}));
+	}
+}
+
+class CleanupModal extends Modal {
+	plugin: S3AttachmentUploader;
+	progressEl: HTMLElement;
+	statusEl: HTMLElement;
+	resultEl: HTMLElement;
+	cleanupButton: HTMLButtonElement;
+	cancelButton: HTMLButtonElement;
+	isRunning: boolean = false;
+	shouldCancel: boolean = false;
+
+	constructor(app: App, plugin: S3AttachmentUploader) {
+		super(app);
+		this.plugin = plugin;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl('h2', { text: this.plugin.i18n.t('cleanup.title') });
+
+		const warningEl = contentEl.createEl('div', { 
+			cls: 'mod-warning',
+			text: this.plugin.i18n.t('cleanup.warning')
+		});
+		warningEl.style.color = 'red';
+		warningEl.style.fontWeight = 'bold';
+		warningEl.style.marginBottom = '20px';
+
+		this.statusEl = contentEl.createEl('div', { 
+			text: this.plugin.i18n.t('cleanup.ready')
+		});
+
+		this.progressEl = contentEl.createEl('div', { cls: 'cleanup-progress' });
+		this.progressEl.style.cssText = `
+			width: 100%;
+			height: 20px;
+			background-color: #f0f0f0;
+			border-radius: 10px;
+			margin: 20px 0;
+			overflow: hidden;
+			display: none;
+		`;
+
+		const progressBar = this.progressEl.createEl('div');
+		progressBar.style.cssText = `
+			height: 100%;
+			background-color: #4CAF50;
+			width: 0%;
+			transition: width 0.3s ease;
+		`;
+
+		this.resultEl = contentEl.createEl('div');
+		this.resultEl.style.marginTop = '20px';
+
+		const buttonContainer = contentEl.createEl('div');
+		buttonContainer.style.cssText = `
+			display: flex;
+			justify-content: space-between;
+			margin-top: 20px;
+		`;
+
+		this.cleanupButton = buttonContainer.createEl('button', { 
+			text: this.plugin.i18n.t('cleanup.startButton'),
+			cls: 'mod-warning'
+		});
+		this.cleanupButton.onclick = () => this.startCleanup();
+
+		this.cancelButton = buttonContainer.createEl('button', { 
+			text: this.plugin.i18n.t('cleanup.cancelButton')
+		});
+		this.cancelButton.onclick = () => this.close();
+	}
+
+	async startCleanup() {
+		this.isRunning = true;
+		this.shouldCancel = false;
+		this.cleanupButton.disabled = true;
+		this.cancelButton.textContent = this.plugin.i18n.t('cleanup.stopButton');
+		this.cancelButton.onclick = () => {
+			this.shouldCancel = true;
+			this.cancelButton.disabled = true;
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.stopping');
+		};
+		
+		this.progressEl.style.display = 'block';
+		this.resultEl.empty();
+
+		try {
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.gettingS3Files');
+			const s3Files = await this.plugin.getAllS3Files();
+			console.log(`Found ${s3Files.length} S3 files:`, s3Files);
+			
+			if (this.shouldCancel) return;
+			
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.scanningObsidian');
+			const obsidianReferences = await this.plugin.findAllObsidianReferences();
+			
+			if (this.shouldCancel) return;
+
+			// 创建规范化的比较集合
+			const normalizedReferences = new Set<string>();
+			console.log(`Current settings - folderPath: '${this.plugin.settings.folderPath}', bucketName: '${this.plugin.settings.bucketName}', usePathStyle: ${this.plugin.settings.usePathStyle}`);
+			
+			for (const ref of obsidianReferences) {
+				normalizedReferences.add(ref);
+				
+				// 根据是否使用 Path-Style 来处理路径
+				if (this.plugin.settings.usePathStyle) {
+					// Path-Style 模式: baseUrl/bucketName/key
+					// 但实际引用可能没有 bucketName 部分，所以需要智能匹配
+					
+					// 尝试移除可能的 bucketName 前缀
+					if (this.plugin.settings.bucketName && ref.startsWith(this.plugin.settings.bucketName + '/')) {
+						const withoutBucket = ref.substring(this.plugin.settings.bucketName.length + 1);
+						normalizedReferences.add(withoutBucket);
+						console.log(`Path-Style: Removed bucket prefix, '${ref}' -> '${withoutBucket}'`);
+					}
+					
+					// 如果引用直接以 folderPath 开头（没有 bucketName）
+					if (this.plugin.settings.folderPath && ref.startsWith(this.plugin.settings.folderPath + '/')) {
+						const withoutFolder = ref.substring(this.plugin.settings.folderPath.length + 1);
+						normalizedReferences.add(withoutFolder);
+						console.log(`Path-Style: Removed folder prefix, '${ref}' -> '${withoutFolder}'`);
+					}
+				} else {
+					// 非 Path-Style 模式: baseUrl/key
+					if (this.plugin.settings.folderPath && ref.startsWith(this.plugin.settings.folderPath + '/')) {
+						const normalizedRef = ref.substring(this.plugin.settings.folderPath.length + 1);
+						normalizedReferences.add(normalizedRef);
+						console.log(`Non Path-Style: Removed folder prefix, '${ref}' -> '${normalizedRef}'`);
+					}
+				}
+				
+				// 通用的直接匹配检测
+				for (const s3File of s3Files) {
+					if (ref.endsWith('/' + s3File) || ref === s3File) {
+						normalizedReferences.add(s3File);
+						console.log(`Direct match: '${s3File}' found in reference '${ref}'`);
+					}
+				}
+			}
+
+			const unusedFiles = s3Files.filter(file => {
+				// 检查直接匹配
+				if (normalizedReferences.has(file)) {
+					return false;
+				}
+				
+				// 检查带folderPath的匹配
+				const fullPath = this.plugin.settings.folderPath + '/' + file;
+				if (normalizedReferences.has(fullPath)) {
+					return false;
+				}
+				
+				return true;
+			});
+
+			console.log(`S3 files:`, s3Files);
+			console.log(`Original references:`, Array.from(obsidianReferences));
+			console.log(`Normalized references:`, Array.from(normalizedReferences));
+			console.log(`Unused files:`, unusedFiles);
+			
+			if (unusedFiles.length === 0) {
+				this.statusEl.textContent = this.plugin.i18n.t('cleanup.noUnusedFiles');
+				
+				// 显示调试信息
+				const debugEl = this.resultEl.createEl('div');
+				debugEl.innerHTML = `
+					<details style="margin-top: 10px;">
+						<summary>调试信息</summary>
+						<p>S3文件总数: ${s3Files.length}</p>
+						<p>Obsidian引用数: ${obsidianReferences.size}</p>
+						<p>所有文件都有引用，无需清理</p>
+					</details>
+				`;
+				
+				this.progressEl.style.display = 'none';
+				this.resetButtons();
+				return;
+			}
+
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.foundUnusedFiles', { 
+				count: unusedFiles.length.toString() 
+			});
+
+			// 显示将要删除的文件列表
+			const previewEl = this.resultEl.createEl('div');
+			previewEl.innerHTML = `
+				<details style="margin: 10px 0; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+					<summary style="cursor: pointer; font-weight: bold; color: #d73a49;">⚠️ 将要${this.plugin.settings.moveToTrash ? '移动到回收站' : '永久删除'}的文件 (${unusedFiles.length}个)</summary>
+					<div style="max-height: 200px; overflow-y: auto; margin-top: 10px;">
+						${unusedFiles.map(file => `<div style="padding: 2px 0; font-family: monospace; font-size: 12px;">${file}</div>`).join('')}
+					</div>
+				</details>
+			`;
+
+			// 添加确认按钮
+			const confirmContainer = this.resultEl.createEl('div');
+			confirmContainer.style.cssText = `
+				display: flex;
+				gap: 10px;
+				margin: 10px 0;
+			`;
+
+			const confirmButton = confirmContainer.createEl('button', { 
+				text: `确认${this.plugin.settings.moveToTrash ? '移动到回收站' : '永久删除'}`,
+				cls: 'mod-warning'
+			});
+			
+			const cancelButton = confirmContainer.createEl('button', { 
+				text: '取消'
+			});
+
+			// 等待用户确认
+			await new Promise<void>((resolve, reject) => {
+				confirmButton.onclick = () => {
+					confirmContainer.remove();
+					resolve();
+				};
+				
+				cancelButton.onclick = () => {
+					this.resetButtons();
+					reject(new Error('用户取消操作'));
+				};
+			});
+
+			let processed = 0;
+			let deleted = 0;
+			let failed = 0;
+
+			const progressBar = this.progressEl.querySelector('div') as HTMLElement;
+
+			for (const file of unusedFiles) {
+				if (this.shouldCancel) break;
+
+				this.statusEl.textContent = this.plugin.i18n.t('cleanup.processing', {
+					current: (processed + 1).toString(),
+					total: unusedFiles.length.toString(),
+					filename: file
+				});
+
+				let success = false;
+				if (this.plugin.settings.moveToTrash) {
+					success = await this.plugin.moveS3FileToTrash(file);
+				} else {
+					success = await this.plugin.deleteS3File(file);
+				}
+
+				if (success) {
+					deleted++;
+				} else {
+					failed++;
+				}
+
+				processed++;
+				const progress = (processed / unusedFiles.length) * 100;
+				progressBar.style.width = `${progress}%`;
+			}
+
+			this.showResults(processed, deleted, failed, this.shouldCancel);
+			
+		} catch (error) {
+			console.error('Cleanup failed:', error);
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.error', { 
+				error: error.message 
+			});
+			this.statusEl.style.color = 'red';
+		}
+
+		this.resetButtons();
+	}
+
+	showResults(processed: number, deleted: number, failed: number, cancelled: boolean) {
+		this.resultEl.empty();
+		
+		if (cancelled) {
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.cancelled');
+		} else {
+			this.statusEl.textContent = this.plugin.i18n.t('cleanup.completed');
+		}
+
+		if (deleted > 0) {
+			const successEl = this.resultEl.createEl('div', { 
+				text: this.plugin.i18n.t('cleanup.deletedFiles', { 
+					count: deleted.toString() 
+				})
+			});
+			successEl.style.color = 'green';
+		}
+
+		if (failed > 0) {
+			const failedEl = this.resultEl.createEl('div', { 
+				text: this.plugin.i18n.t('cleanup.failedFiles', { 
+					count: failed.toString() 
+				})
+			});
+			failedEl.style.color = 'red';
+		}
+	}
+
+	resetButtons() {
+		this.isRunning = false;
+		this.cleanupButton.disabled = false;
+		this.cleanupButton.textContent = this.plugin.i18n.t('cleanup.startButton');
+		this.cancelButton.disabled = false;
+		this.cancelButton.textContent = this.plugin.i18n.t('cleanup.cancelButton');
+		this.cancelButton.onclick = () => this.close();
+		this.progressEl.style.display = 'none';
+	}
+
+	onClose() {
+		this.shouldCancel = true;
 	}
 }

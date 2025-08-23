@@ -1,7 +1,8 @@
 {
 	"commands": {
 		"uploadAllAttachments": "Upload all attachments to S3",
-		"uploadCurrentFileAttachments": "Upload current file attachments to S3"
+		"uploadCurrentFileAttachments": "Upload current file attachments to S3",
+		"cleanupUnusedS3Files": "Clean up unused S3 files"
 	},
 	"ribbon": {
 		"uploadAttachments": "Upload current file attachments"
@@ -86,6 +87,39 @@
 			"desc": "Test if the S3 configuration is working correctly",
 			"button": "Test Connection",
 			"testing": "Testing..."
+		},
+		"trashPath": {
+			"name": "Trash Path",
+			"desc": "Trash folder path in S3 (deleted files will be moved here)",
+			"placeholder": ".trash"
+		},
+		"moveToTrash": {
+			"name": "Move to Trash",
+			"desc": "When enabled, deleted files will be moved to trash instead of permanent deletion"
+		},
+		"cleanupFiles": {
+			"name": "Clean up unused files",
+			"desc": "⚠️ Dangerous operation: Scan S3 bucket and delete files not referenced in Obsidian",
+			"button": "Start Cleanup"
 		}
+	},
+	"cleanup": {
+		"title": "Clean up unused S3 files",
+		"warning": "⚠️ Warning: This operation will delete files in S3 that are not referenced in Obsidian documents. Please ensure you have backed up important data!",
+		"ready": "Ready to start cleanup. Click the button below to begin scanning and cleanup process.",
+		"startButton": "Start Cleanup",
+		"cancelButton": "Cancel",
+		"stopButton": "Stop",
+		"gettingS3Files": "Getting S3 file list...",
+		"scanningObsidian": "Scanning references in Obsidian documents...",
+		"foundUnusedFiles": "Found {{count}} unused files",
+		"noUnusedFiles": "✅ No unused files found",
+		"processing": "Processing {{current}}/{{total}}: {{filename}}",
+		"stopping": "Stopping cleanup process...",
+		"cancelled": "Cleanup process cancelled",
+		"completed": "Cleanup process completed",
+		"deletedFiles": "✅ Successfully deleted {{count}} files",
+		"failedFiles": "❌ Failed to delete {{count}} files",
+		"error": "Cleanup process error: {{error}}"
 	}
 }
