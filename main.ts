@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, TFile, Notice, moment, Modal } from 'obsidian';
-import { S3 } from 'aws-sdk';
+import { S3Client, S3ClientConfig, PutObjectCommand, HeadBucketCommand, ListObjectsV2Command, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 
 interface LocaleStrings {
 	[key: string]: any;
@@ -71,7 +71,7 @@ const DEFAULT_SETTINGS: S3UploaderSettings = {
 
 export default class S3AttachmentUploader extends Plugin {
 	settings: S3UploaderSettings;
-	s3: S3;
+	s3: S3Client;
 	i18n: I18n;
 
 	async onload() {
@@ -134,11 +134,13 @@ export default class S3AttachmentUploader extends Plugin {
 
 	initializeS3() {
 		if (this.settings.accessKeyId && this.settings.secretAccessKey) {
-			const s3Config: any = {
-				accessKeyId: this.settings.accessKeyId,
-				secretAccessKey: this.settings.secretAccessKey,
+			const s3Config: S3ClientConfig = {
+				credentials: {
+					accessKeyId: this.settings.accessKeyId,
+					secretAccessKey: this.settings.secretAccessKey
+				},
 				region: this.settings.region,
-				s3ForcePathStyle: this.settings.usePathStyle
+				forcePathStyle: this.settings.usePathStyle
 			};
 			
 			// 如果设置了自定义 baseUrl，则使用它作为 endpoint
@@ -146,7 +148,7 @@ export default class S3AttachmentUploader extends Plugin {
 				s3Config.endpoint = this.settings.baseUrl;
 			}
 			
-			this.s3 = new S3(s3Config);
+			this.s3 = new S3Client(s3Config);
 		}
 	}
 
@@ -254,12 +256,13 @@ export default class S3AttachmentUploader extends Plugin {
 					}));
 				}
 				
-				await this.s3.upload({
+				const command = new PutObjectCommand({
 					Bucket: this.settings.bucketName,
 					Key: key,
 					Body: buffer,
 					ContentType: this.getContentType(attachment.extension)
-				}).promise();
+				});
+				await this.s3.send(command);
 
 				let cloudUrl: string;
 				if (this.settings.usePathStyle) {
@@ -396,7 +399,8 @@ export default class S3AttachmentUploader extends Plugin {
 		}
 
 		try {
-			await this.s3.headBucket({ Bucket: this.settings.bucketName }).promise();
+			const command = new HeadBucketCommand({ Bucket: this.settings.bucketName });
+			await this.s3.send(command);
 			new Notice(this.i18n.t('notices.s3ConnectionSuccess'));
 			return true;
 		} catch (error) {
@@ -453,7 +457,8 @@ export default class S3AttachmentUploader extends Plugin {
 			}
 
 			try {
-				const result = await this.s3.listObjectsV2(params).promise();
+				const command = new ListObjectsV2Command(params);
+				const result = await this.s3.send(command);
 				
 				if (result.Contents) {
 					for (const object of result.Contents) {
@@ -531,10 +536,11 @@ export default class S3AttachmentUploader extends Plugin {
 		}
 
 		try {
-			await this.s3.deleteObject({
+			const command = new DeleteObjectCommand({
 				Bucket: this.settings.bucketName,
 				Key: key
-			}).promise();
+			});
+			await this.s3.send(command);
 			return true;
 		} catch (error) {
 			console.error(`Error deleting S3 file ${key}:`, error);
@@ -551,16 +557,18 @@ export default class S3AttachmentUploader extends Plugin {
 			const fileName = key.split('/').pop() || key;
 			const trashKey = `${this.settings.trashPath}/${fileName}_${Date.now()}`;
 			
-			await this.s3.copyObject({
+			const copyCommand = new CopyObjectCommand({
 				Bucket: this.settings.bucketName,
 				CopySource: `${this.settings.bucketName}/${key}`,
 				Key: trashKey
-			}).promise();
+			});
+			await this.s3.send(copyCommand);
 
-			await this.s3.deleteObject({
+			const deleteCommand = new DeleteObjectCommand({
 				Bucket: this.settings.bucketName,
 				Key: key
-			}).promise();
+			});
+			await this.s3.send(deleteCommand);
 
 			return true;
 		} catch (error) {
