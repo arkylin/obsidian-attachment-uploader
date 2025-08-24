@@ -43,7 +43,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 var require_browser = __commonJS({
   "node_modules/process/browser.js"(exports2, module2) {
     init_polyfills();
-    var process3 = module2.exports = {};
+    var process2 = module2.exports = {};
     var cachedSetTimeout;
     var cachedClearTimeout;
     function defaultSetTimout() {
@@ -148,7 +148,7 @@ var require_browser = __commonJS({
       draining = false;
       runClearTimeout(timeout);
     }
-    process3.nextTick = function(fun) {
+    process2.nextTick = function(fun) {
       var args = new Array(arguments.length - 1);
       if (arguments.length > 1) {
         for (var i2 = 1; i2 < arguments.length; i2++) {
@@ -167,49 +167,87 @@ var require_browser = __commonJS({
     Item.prototype.run = function() {
       this.fun.apply(null, this.array);
     };
-    process3.title = "browser";
-    process3.browser = true;
-    process3.env = {};
-    process3.argv = [];
-    process3.version = "";
-    process3.versions = {};
+    process2.title = "browser";
+    process2.browser = true;
+    process2.env = {};
+    process2.argv = [];
+    process2.version = "";
+    process2.versions = {};
     function noop() {
     }
-    process3.on = noop;
-    process3.addListener = noop;
-    process3.once = noop;
-    process3.off = noop;
-    process3.removeListener = noop;
-    process3.removeAllListeners = noop;
-    process3.emit = noop;
-    process3.prependListener = noop;
-    process3.prependOnceListener = noop;
-    process3.listeners = function(name) {
+    process2.on = noop;
+    process2.addListener = noop;
+    process2.once = noop;
+    process2.off = noop;
+    process2.removeListener = noop;
+    process2.removeAllListeners = noop;
+    process2.emit = noop;
+    process2.prependListener = noop;
+    process2.prependOnceListener = noop;
+    process2.listeners = function(name) {
       return [];
     };
-    process3.binding = function(name) {
+    process2.binding = function(name) {
       throw new Error("process.binding is not supported");
     };
-    process3.cwd = function() {
+    process2.cwd = function() {
       return "/";
     };
-    process3.chdir = function(dir) {
+    process2.chdir = function(dir) {
       throw new Error("process.chdir is not supported");
     };
-    process3.umask = function() {
+    process2.umask = function() {
       return 0;
     };
   }
 });
 
 // polyfills.js
-var import_buffer, import_process;
+function createFallbackBuffer() {
+  return {
+    from: function(data) {
+      if (data instanceof ArrayBuffer) {
+        return new Uint8Array(data);
+      }
+      if (typeof data === "string") {
+        const bytes = new Uint8Array(data.length);
+        for (let i2 = 0; i2 < data.length; i2++) {
+          bytes[i2] = data.charCodeAt(i2) & 255;
+        }
+        return bytes;
+      }
+      return new Uint8Array(data);
+    },
+    isBuffer: function(obj) {
+      return obj instanceof Uint8Array;
+    }
+  };
+}
+var BufferImpl, processImpl;
 var init_polyfills = __esm({
   "polyfills.js"() {
-    import_buffer = require("buffer");
-    import_process = __toESM(require_browser());
-    globalThis.Buffer = import_buffer.Buffer;
-    globalThis.process = import_process.default;
+    try {
+      const bufferModule = require("buffer");
+      if (bufferModule && bufferModule.Buffer && typeof bufferModule.Buffer.from === "function") {
+        BufferImpl = bufferModule.Buffer;
+      } else {
+        BufferImpl = createFallbackBuffer();
+      }
+    } catch (e2) {
+      BufferImpl = createFallbackBuffer();
+    }
+    try {
+      const process2 = require_browser();
+      processImpl = process2;
+    } catch (e2) {
+      console.warn("Process import failed on mobile, using fallback:", e2.message);
+      processImpl = { env: {} };
+    }
+    globalThis.Buffer = BufferImpl;
+    globalThis.process = processImpl;
+    if (globalThis.process && !globalThis.process.Buffer) {
+      globalThis.process.Buffer = globalThis.Buffer;
+    }
     globalThis.global = globalThis;
   }
 });
